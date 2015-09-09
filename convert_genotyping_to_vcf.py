@@ -117,7 +117,7 @@ def main():
     argparser = _prepare_argparser()
     args = argparser.parse_args()
     with open(args.output_file, 'w') as open_ouput:
-        text = convert_genotype_csv(args.genotype_file, args.genome_fai, args.flanking_size, )
+        text = convert_genotype_csv(args.genotype_file, args.reference_fai, args.flanking_size)
         open_ouput.write(text)
 
 def _prepare_argparser():
