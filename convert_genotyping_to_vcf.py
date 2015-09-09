@@ -101,9 +101,9 @@ def convert_genotype_csv(csv_file, genome_fai, flank_length=0):
             SNPs_id, reference_name, reference_position, ref_allele, design_strand = SNPs_definition.get(assay_id)
             alt_allele, genotype = get_genotype_from_call(ref_allele, line.get(HEADERS_CALL), design_strand)
             if flank_length:
-                out=[assay_id, str(flank_length+1), SNPs_id, ref_allele, alt_allele, ".", ".", "GT", genotype]
+                out=[assay_id, str(flank_length+1), SNPs_id, ref_allele, alt_allele, ".", ".", ".", "GT", genotype]
             else:
-                out=[reference_name, reference_position, SNPs_id, ref_allele, alt_allele, ".", ".", "GT", genotype]
+                out=[reference_name, reference_position, SNPs_id, ref_allele, alt_allele, ".", ".", ",", "GT", genotype]
             all_records[out[0]].append(out)
     all_lines = ["##fileformat=VCFv4.1",
                  '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">']
