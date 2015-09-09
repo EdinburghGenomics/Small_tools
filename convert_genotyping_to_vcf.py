@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from collections import defaultdict
 import csv
 
 __author__ = 'tcezard'
@@ -50,13 +51,13 @@ def complement(bases):
     return ''.join([_complement.get(base) for base in bases])
 
 def get_genotype_from_call(ref_allele, call, design_strand):
+    """Uses the SNPs definition to convert the genotype call to a vcf compatible genotype"""
     alternate_allele = '.'
     genotype = './.'
     if call == 'Undefined':
         return alternate_allele, genotype
     if design_strand == 'Reverse':
         call = complement(call)
-
     callset = set(call)
     if ref_allele in callset and len(callset) == 1:
         genotype='0/0'
@@ -69,10 +70,31 @@ def get_genotype_from_call(ref_allele, call, design_strand):
         alternate_allele = ','.join(callset)
     return alternate_allele, genotype
 
-def convert_genotype_csv(csv_file, flank_length=0):
+def vcf_header_from_fai_file(genome_fai):
+    """Generate a vcf header from an fai file"""
+    header_entries = []
+    with open(genome_fai) as open_file:
+        reader = csv.reader(open_file, delimiter='\t')
+        for row in reader:
+            header_entries.append('##contig=<ID=%s,length=%s>'%(row[0], row[1]))
+    return header_entries
+
+def order_from_fai(all_records, genome_fai):
+    ordered_records = []
+    with open(genome_fai) as open_file:
+        reader = csv.reader(open_file, delimiter='\t')
+        for row in reader:
+            snps = all_records.get(row[0], [])
+            #Sort the SNPs by position within a ref
+            snps.sort(key=lambda snp: int(snp[1]))
+            #convert the array to str
+            ordered_records.extend(['\t'.join(s) for s in snps])
+    return ordered_records
+
+def convert_genotype_csv(csv_file, genome_fai, flank_length=0):
     with open(csv_file) as open_file:
         reader = csv.DictReader(open_file, delimiter='\t')
-        all_lines = []
+        all_records = defaultdict(list)
         for line in reader:
             sample = line[HEADERS_SAMPLE_ID]
             assay_id = line[HEADERS_ASSAY_ID]
@@ -82,16 +104,20 @@ def convert_genotype_csv(csv_file, flank_length=0):
                 out=[assay_id, str(flank_length+1), SNPs_id, ref_allele, alt_allele, ".", ".", "GT", genotype]
             else:
                 out=[reference_name, reference_position, SNPs_id, ref_allele, alt_allele, ".", ".", "GT", genotype]
-            all_lines.append('\t'.join(out))
+            all_records[out[0]].append(out)
+    all_lines = ["##fileformat=VCFv4.1",
+                 '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">']
+    all_lines.extend(vcf_header_from_fai_file(genome_fai))
     vcf_header.append(sample)
-    vcf_text = '\t'.join(vcf_header) + '\n' + '\n'.join(sorted(all_lines))
-    return vcf_text
+    all_lines.append('\t'.join(vcf_header))
+    all_lines.extend(order_from_fai(all_records, genome_fai))
+    return '\n'.join(all_lines)
 
 def main():
     argparser = _prepare_argparser()
     args = argparser.parse_args()
     with open(args.output_file, 'w') as open_ouput:
-        text = convert_genotype_csv(args.genotype_file, args.flanking_size, )
+        text = convert_genotype_csv(args.genotype_file, args.genome_fai, args.flanking_size, )
         open_ouput.write(text)
 
 def _prepare_argparser():
@@ -102,11 +128,13 @@ def _prepare_argparser():
 
     argparser = ArgumentParser(description=description)
 
-    argparser.add_argument("-g", "--genotype_file", dest="genotype_file", type=str,
+    argparser.add_argument("-g", "--genotype_file", dest="genotype_file", type=str, required = True,
                            help="The genotype file to convert.")
+    argparser.add_argument("-r", "--reference_fai", dest="reference_fai", type=str, required = True,
+                           help="The file containing the reference fai.")
     argparser.add_argument("-f", "--flanking_size", dest="flanking_size", type=int,
                            help="The size of the flanking region used to build the small genome.")
-    argparser.add_argument("-o", "--output_file", dest="output_file", type=str,
+    argparser.add_argument("-o", "--output_file", dest="output_file", type=str, required = True,
                            help="The output file name.")
     return argparser
 
