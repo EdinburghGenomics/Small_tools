@@ -7,7 +7,8 @@ __author__ = 'tcezard'
 
 class Test_small_tools(TestCase):
     def setUp(self):
-        self.genotype_csv = os.path.join(os.path.dirname(__file__), 'test_data','genotype_50293.csv')
+        self.genotype_csv = os.path.join(os.path.dirname(__file__), 'test_data','E03159_WGS_32_panel_9504430.csv')
+        self.genotype_csv = os.path.join(os.path.dirname(__file__), 'test_data','E03159_WGS_32_panel.csv')
         self.small_reference_fai = os.path.join(os.path.dirname(__file__), 'test_data','genotype_32_SNPs_genome_600bp.fa.fai')
         self.reference_fai = os.path.join(os.path.dirname(__file__), 'test_data','GRCh37.fa.fai')
 
@@ -47,8 +48,8 @@ class Test_small_tools(TestCase):
 Y	14850341	rs2032598	T	.	.	.	GT	./.
 Y	6818291	rs768983	C	.	.	.	GT	./.
 Y	8602518	rs3913290	C	.	.	.	GT	./."""
-        text=convert_genotype_csv(self.genotype_csv,self.reference_fai)
-        print(text)
+        #text=convert_genotype_csv(self.genotype_csv,self.reference_fai)
+        #print(text)
         #self.assertEqual(text,vcf_text)
 
         text=convert_genotype_csv(self.genotype_csv, self.small_reference_fai, 600)
