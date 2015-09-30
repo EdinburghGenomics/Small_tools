@@ -37,11 +37,10 @@ SNPs_definition = {"C___2728408_10": ["rs3010325",  "1",  "59569829",  "C", "T",
                    "C___8938211_20": ["rs3913290",  "Y",  "8602518",   "C", "T", "Forward"],
                    "C___1083232_10": ["rs2032598",  "Y",  "14850341",  "T", "C", "Reverse"]}
 
-HEADERS_SAMPLE_ID="Sample Id"
-HEADERS_PLATE_BARCODE="Plate Barcode"
-HEADERS_ASSAY_NAME="Assay Name"
-HEADERS_ASSAY_ID="Assay ID"
 HEADERS_CALL="Call"
+#Actual Header in the file
+HEADERS_SAMPLE_ID = "StudyID"
+HEADERS_ASSAY_ID="SNPName"
 
 vcf_header=['#CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT']
 
@@ -54,8 +53,11 @@ def get_genotype_from_call(ref_allele, alternate_allele, call, design_strand):
     genotype = './.'
     if call == 'Undefined':
         return alternate_allele, genotype
-    if design_strand == 'Reverse':
-        call = complement(call)
+    if call == 'Both':
+        call=ref_allele + alternate_allele
+    #The call arrive on the forward strand so no need to reverse it
+    #if design_strand == 'Reverse':
+    #    call = complement(call)
     callset = set(call)
     if ref_allele in callset and len(callset) == 1:
         genotype='0/0'
@@ -90,9 +92,10 @@ def order_from_fai(all_records, genome_fai):
     return ordered_records
 
 def convert_genotype_csv(csv_file, genome_fai, flank_length=0):
+    all_samples = set()
     with open(csv_file) as open_file:
         reader = csv.DictReader(open_file, delimiter='\t')
-        all_records = defaultdict(list)
+        all_records = defaultdict(dict)
         for line in reader:
             sample = line[HEADERS_SAMPLE_ID]
             assay_id = line[HEADERS_ASSAY_ID]
@@ -100,17 +103,29 @@ def convert_genotype_csv(csv_file, genome_fai, flank_length=0):
             #alt_allele is the alternate allele from the dbsnp definition
             #It will be replaced by the alt allele from the call if it exists
             alt_allele, genotype = get_genotype_from_call(ref_allele, alt_allele, line.get(HEADERS_CALL), design_strand)
-            if flank_length:
-                out=[assay_id, str(flank_length+1), SNPs_id, ref_allele, alt_allele, ".", ".", ".", "GT", genotype]
-            else:
-                out=[reference_name, reference_position, SNPs_id, ref_allele, alt_allele, ".", ".", ",", "GT", genotype]
-            all_records[out[0]].append(out)
+            if not 'SNPs' in all_records[SNPs_id]:
+                if flank_length:
+                    SNP=[assay_id, str(flank_length+1), SNPs_id, ref_allele, alt_allele, ".", ".", ".", "GT"]
+                else:
+                    SNP=[reference_name, reference_position, SNPs_id, ref_allele, alt_allele, ".", ".", ".", "GT"]
+                all_records[SNPs_id]['SNP']=SNP
+            all_records[SNPs_id][sample]=genotype
+            all_samples.add(sample)
+
+    all_samples = sorted(all_samples)
+    SNPs_list = defaultdict(list)
+    for SNPs_id in  all_records:
+        record = all_records.get(SNPs_id)
+        out = record.get('SNP')
+        out.extend([record.get(sample) for sample in all_samples])
+        SNPs_list[out[0]].append(out)
+
     all_lines = ["##fileformat=VCFv4.1",
                  '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">']
     all_lines.extend(vcf_header_from_fai_file(genome_fai))
-    vcf_header.append(sample)
+    vcf_header.extend(all_samples)
     all_lines.append('\t'.join(vcf_header))
-    all_lines.extend(order_from_fai(all_records, genome_fai))
+    all_lines.extend(order_from_fai(SNPs_list, genome_fai))
     return '\n'.join(all_lines)
 
 def main():
