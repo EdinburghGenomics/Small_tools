@@ -98,6 +98,9 @@ def convert_genotype_csv(csv_file, genome_fai, flank_length=0):
         all_records = defaultdict(dict)
         for line in reader:
             sample = line[HEADERS_SAMPLE_ID]
+            if sample =='Blank':
+                #Entries with blank as sample name are entries with water and no DNA
+                continue
             assay_id = line[HEADERS_ASSAY_ID]
             SNPs_id, reference_name, reference_position, ref_allele, alt_allele, design_strand = SNPs_definition.get(assay_id)
             #alt_allele is the alternate allele from the dbsnp definition
@@ -109,6 +112,8 @@ def convert_genotype_csv(csv_file, genome_fai, flank_length=0):
                 else:
                     SNP=[reference_name, reference_position, SNPs_id, ref_allele, alt_allele, ".", ".", ".", "GT"]
                 all_records[SNPs_id]['SNP']=SNP
+            if sample in all_records[SNPs_id]:
+                raise Exception('Sample {} found more than once for SNPs {}'.format(sample, SNPs_id))
             all_records[SNPs_id][sample]=genotype
             all_samples.add(sample)
 
