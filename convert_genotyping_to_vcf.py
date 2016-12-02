@@ -39,8 +39,8 @@ SNPs_definition = {"C___2728408_10": ["rs3010325",  "1",  "59569829",  "C", "T",
 
 HEADERS_CALL="Call"
 #Actual Header in the file
-HEADERS_SAMPLE_ID = "StudyID"
-HEADERS_ASSAY_ID="SNPName"
+HEADERS_SAMPLE_ID = ["StudyID", 'Sample ID']
+HEADERS_ASSAY_ID=["SNPName", "Assay Name"]
 
 vcf_header=['#CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT']
 
@@ -96,12 +96,19 @@ def convert_genotype_csv(csv_file, genome_fai, flank_length=0):
     with open(csv_file) as open_file:
         reader = csv.DictReader(open_file, delimiter='\t')
         all_records = defaultdict(dict)
+        fields = set(reader.fieldnames)
+        for h in  HEADERS_SAMPLE_ID:
+            if h in fields:
+                header_sample_id = h
+        for h in  HEADERS_ASSAY_ID:
+            if h in fields:
+                header_assay_id = h
         for line in reader:
-            sample = line[HEADERS_SAMPLE_ID]
-            if sample =='Blank':
+            sample = line[header_sample_id]
+            if sample.lower() =='blank':
                 #Entries with blank as sample name are entries with water and no DNA
                 continue
-            assay_id = line[HEADERS_ASSAY_ID]
+            assay_id = line[header_assay_id]
             SNPs_id, reference_name, reference_position, ref_allele, alt_allele, design_strand = SNPs_definition.get(assay_id)
             #alt_allele is the alternate allele from the dbsnp definition
             #It will be replaced by the alt allele from the call if it exists
