@@ -1,7 +1,23 @@
 #!/bin/bash
+# python_project_in_venv.sh: deployment script for installing a project to a
+# Python virtual environment to run as an executable
 
-# python_project_in_venv.sh
-# Deployment script for installing a project to a Python virtual environment to run as an executable
+### config
+# pyvenv: path to central executable for installing Python virtual environments
+pyvenv=
+
+# repo: remote url of the git repository
+repo=
+
+# any preliminary commands, exports, etc
+
+if [ ! $pyvenv ] || [ ! $repo ]
+then
+    echo "Invalid config: ensure that pyvenv and repo are populated"
+    exit 1
+fi
+### end config
+
 
 if [ $# == 0 ]
 then
@@ -13,26 +29,15 @@ scriptpath=$(dirname $(readlink -f $0))
 cd $scriptpath
 git_tag=$1
 
-# config
-# pyvenv: path to central executable for installing Python virtual environments
-pyvenv=
 
-# repo: remote url of the git repository
-repo=
-
-# any preliminary commands, exports, etc
-
-# end config
-
-if [ ! $git_tag ]
+if [ "$git_tag" == "master" ]
 then
-    git_tag="master"
     deployment_suffix=""
 else
     deployment_suffix="@$git_tag"
 fi
 
-echo "Deploying $git_tag"
+echo "Deploying $git_tag from $repo"
 
 if [ -d "./$git_tag" ]
 then
@@ -44,5 +49,8 @@ $git_tag/bin/pip install -q "git+$repo$deployment_suffix"
 
 if [ "$2" == "setlink" ]
 then
+    echo "Setting production link"
     ln -fnvs ./$git_tag ./production
 fi
+
+echo "Done"
