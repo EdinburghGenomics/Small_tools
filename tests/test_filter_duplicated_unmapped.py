@@ -16,7 +16,7 @@ class TestFilterDupUnmapped(TestCase):
         with patch('sys.stderr.write') as patch_write:
             filter_duplicated_unmpped_read(input_file, output_file)
             assert patch_write.mock_calls[0] == call(
-                'Read 17 reads from /Users/tcezard/PycharmProjects/Small_tools/tests/assets/test.bam\n'
+                'Read 17 reads from %s\n' % input_file
             )
             assert patch_write.mock_calls[1] == call('Skipped 1 reads\n')
 
