@@ -1,2 +1,2 @@
 # Small_tools
-Small tools used to manipulate format or processing small amount of data
+Small tools used to manipulate file formats and process small amounts of data.
