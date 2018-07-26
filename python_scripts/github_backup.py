@@ -1,3 +1,4 @@
+import os
 import requests
 import argparse
 from datetime import datetime
@@ -27,8 +28,10 @@ def main():
     a = argparse.ArgumentParser()
     a.add_argument(
         'key_file',
-        help="Single-line file containing GitHub API credentials in the format 'username:access_token'"
+        help="""Path to a single-line file containing GitHub API credentials in the format
+                'username:personal_access_token'. The access token requires the scope 'admin:org'."""
     )
+    a.add_argument('--dest', help='Directory to save archives to (defaults to working dir)', default=os.getcwd())
     a.add_argument('--quiet', dest='stdout', action='store_false')
     args = a.parse_args()
 
@@ -58,7 +61,7 @@ def main():
     log('Downloading migration archive')
     archive = request('GET', '/orgs/EdinburghGenomics/migrations/%s/archive' % migration_id)
     tar_file = 'EdinburghGenomics_archive_%s.tar.gz' % datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-    with open(tar_file, 'wb') as f:
+    with open(os.path.join(args.dest, tar_file), 'wb') as f:
         f.write(archive.content)
 
     log('Cleaning up server-side archive')
