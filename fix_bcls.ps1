@@ -29,9 +29,11 @@ function Fix-BCLs($sourcePath, $destPath, $doCopy) {
 
     $validationRecords = Get-Content -Path $bclValidationLog
     $nBcls = 0
-    $nBclsFixed = 0
 
+    $bclsToFixSource = @()
+    $bclsToFixDest = @()  # store the dirnames, since get-item crashes if prospective file doesn't exist
     foreach ($line in $validationRecords) {
+        $nBcls += 1
         $splitLine = $line -split ","
 
         if ($splitLine[1] -notmatch "0") {
@@ -42,36 +44,42 @@ function Fix-BCLs($sourcePath, $destPath, $doCopy) {
 
             $sourceFile = "$sourcePath\Data\Intensities\BaseCalls\$lane\$cycle\$basename"
             $destDir = "$destPath\Data\Intensities\BaseCalls\$lane\$cycle"
-            $destFile = "$destDir\$basename"
 
             if (!(($lane) -and ($cycle) -and ($basename) -and (Test-Path $sourceFile))) {
                 Log "Found bad bcl file path in checked_bcls.csv: $sourceFile"
                 throw "Bad bcl file path"
             }
 
-            $nBclsFixed += 1
-            Log "Recopying $sourceFile to $destFile"
-
-            if ($doCopy) {
-                if (!(Test-Path -PathType Container $destDir)) {
-                    Log "Missing container directory $destDir - creating"
-                    New-Item -ItemType Directory $destDir
-                }
-                Copy-Item $sourceFile $destFile
-            }
+            $bclsToFixSource += $sourceFile
+            $bclsToFixDest += $destDir
+            Log "$sourceFile -> $destDir\$basename"
         }
-        $nBcls += 1
     }
     
-    Log "Found $nBcls bcls, fixed $nBclsFixed"    
-    if (!($doCopy)) {
-        Log "Dry run enabled - no files were copied"
+    $doCopy = (Read-Host "The above $($bclsToFixSource.Length) files will be copied. Enter 'Y' to proceed, or anything else to quit") -eq "Y"
+    if ($doCopy) {
+        Log "Recopying"
+        for ($i = 0; $i -le $bclsToFixSource.Length - 1; $i++) {
+            $sourceFile = Get-Item $bclsToFixSource[$i]
+            $destDir = $bclsToFixDest[$i]
+
+            if (!(Test-Path -PathType Container $destDir)) {
+                Log "Missing container directory $destDir - creating"
+                New-Item -ItemType Directory $destDir
+            }
+            Copy-Item $sourceFile "$destDir\$($sourceFiles.Name)"
+
+            if (($i % 50) -eq 0) {
+                Log "Recopied $i BCLs"
+            }
+        }
+    } else {
+        Log "Dry run - no files were copied"
     }
 }
 
 Write-Output "fix_bcls.ps1 - enter inputs as prompted, or ctrl-C to quit."
 $destPath = (Read-Host "Enter the path to the run to be fixed") | Get-Item
 $sourcePath = (Read-Host "Enter the path to the local backup copy of the run") | Get-Item
-$doCopy = (Read-Host "Enter 'Y' if file copying should be enabled (i.e, this is not a dry run)") -eq "Y"
 
 Fix-Bcls -sourcePath $sourcePath -destPath $destPath -doCopy $doCopy
